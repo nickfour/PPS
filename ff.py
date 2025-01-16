@@ -38,6 +38,8 @@ def cls(delay=1):
     else:
         os.system('clear')
 
+
+
 def run_command(ip_address):
     """ฟังก์ชันสำหรับรันคำสั่ง"""
     command = f"python3 start.py UDP {ip_address} 100 999"
