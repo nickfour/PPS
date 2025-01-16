@@ -40,7 +40,7 @@ def cls(delay=1):
 
 def run_command(ip_address):
     """ฟังก์ชันสำหรับรันคำสั่ง"""
-    command = f"python3 /start.py UDP {ip_address} 100 999"
+    command = f"python3 start.py UDP {ip_address} 100 999"
     print(f"กำลังรันคำสั่ง: {command}")
     return subprocess.Popen(command, shell=True, preexec_fn=os.setsid)
 
