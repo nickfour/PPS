@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DDOS Control Panel</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <style>
+
+        @font-face {
+            font-family: iconic;
+            src: url(https://raw.githubusercontent.com/ZipherCyprex/hid-update/main/font/FC%20Iconic%20Regular.otf);
+        }
+
+
+        * {
+            --textcolor: rgb(239, 232, 255);
+            --bgcolor: linear-gradient(to bottom, #0e0e0e, #131313);
+            --success: rgb(144, 84, 255);
+            --failure: #c9002c;
+            --p: #424242;
+            --pp: #ff0f4b;
+        }
+
+        div {
+            font-family: iconic;
+        }
+
+        body {
+            font-family: iconic, sans-serif;
+            background-color: #111111;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        h1 {
+            font-size: 50px;
+        }
+
+        input {
+            background-color: #1e1e1e;
+            border: none;
+        }
+
+        button {
+            
+        }
+        
+        #cmd-output {
+            background-color: #1e1e1e;
+            border: none;
+            color: white;
+            width: 60%;
+            height: 300px;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            align-items: center;
+        }
+
+        /* Colors for different message types */
+        .info { color: #00FFFF; }   /* Cyan */
+        .warning { color: #FFFF00; }   /* Yellow */
+        .error { color: #FF0000; }   /* Red */
+        .success { color: #00FF00; }   /* Green */
+        .blue { color: #0000FF; }   /* Blue */
+        .rainbow {
+            background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        #command-input, #ip-input, #method-input {
+            width: 60%;
+            height: 20px;
+            padding: 5px;
+            color: rgb(138, 138, 138);
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #1e1e1e;
+            color: rgb(138, 138, 138);
+            border: none;
+            padding: 7px 17px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 12px;
+        }
+
+        button:hover {
+            background-color: #8c00ff;
+            color: #131313;
+        }
+
+        /* Status Label Styles */
+        #status-label {
+            width: 60%;
+            padding: 10px;
+            background-color: #1e1e1e;
+            color: #FFF;v
+            border: 1px solid #555;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>DDOS</h1>
+    
+    <div id="status-label" style="color:red">สถานะ: ไม่มีการโจมตี</div>
+
+
+    <div id="cmd-output" contenteditable="false"></div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 50%;">
+        <input type="text" id="ip-input" placeholder="ป้อน IP..." />
+        <button id="send-ip" data-cooldown="false">ส่งคำสั่ง</button>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 50%;">
+        <input type="text" id="method-input" placeholder="ป้อน Method..." />
+        <button id="send-method" data-cooldown="false">ส่งคำสั่ง</button>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 50%;">
+        <input type="text" id="command-input" placeholder="ป้อนคำสั่ง..." />
+        <button id="send-command" data-cooldown="false">ส่งคำสั่ง</button>
+    </div>
+
+    <script>
+    $(document).ready(function() {
+        const rainbow_colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#8B00FF'];
+        const cooldownTime = 10000;  // 10 วินาที
+
+        function updateStatusLabel() {
+            $.ajax({
+                url: '/update_status',
+                method: 'POST',
+                success: function(response) {
+                    let statusLabel = $('#status-label');
+                    if (response.status === "ไม่มีการโจมตี") {
+                        statusLabel.css('color', 'red');  // Text color
+                    } else {
+                        statusLabel.css('color', 'green');
+                    }
+                    statusLabel.text('สถานะ: ' + response.status);
+                },
+                error: function() {
+                    $('#status-label').text('เกิดข้อผิดพลาดในการดึงสถานะ');
+                }
+            });
+        }
+
+        function disableButton(buttonId) {
+            $(buttonId).data('cooldown', true);
+            setTimeout(() => resetCooldown(buttonId), cooldownTime);  // ดีเลย์การคลิกไว้ 10 วินาที
+        }
+
+        function resetCooldown(buttonId) {
+            $(buttonId).data('cooldown', false);  // reset cooldown
+        }
+
+        function handleButtonClick(buttonId, command, dataKey) {
+            if ($(buttonId).data('cooldown') === false) {
+                $('#cmd-output').html('');
+                var value = $(dataKey).val().trim();
+                $.ajax({
+                    url: '/cmd',
+                    method: 'POST',
+                    data: { command: command, [dataKey.replace('#', '')]: value },
+                    success: function(response) {
+                        updateStatusLabel();
+                        let colorIndex = 0;
+                        response.output.split('\n').forEach(line => {
+                            if (line.trim()) {
+                                $('#cmd-output').append(`<span class="rainbow" style="color:${rainbow_colors[colorIndex % rainbow_colors.length]}">${line}</span>\n`);
+                                colorIndex++;
+                            }
+                        });
+                        $(dataKey).val('');
+                        $('#cmd-output').scrollTop($('#cmd-output')[0].scrollHeight);
+                        disableButton(buttonId);  // disable button with cooldown
+                    },
+                    error: function() {
+                        updateStatusLabel();
+                        $('#cmd-output').append(`<span class="error">เกิดข้อผิดพลาดในการ ${command === 'v' ? 'เปลี่ยน IP' : command === 'b' ? 'เปลี่ยน Method' : 'ส่งคำสั่ง'}</span>\n`);
+                        $('#cmd-output').scrollTop($('#cmd-output')[0].scrollHeight);
+                        disableButton(buttonId);  // disable button with cooldown
+                    }
+                });
+            }
+        }
+
+        $('#send-command').click(function() {
+            handleButtonClick('#send-command', '', '#command-input');
+        });
+
+        $('#send-ip').click(function() {
+            handleButtonClick('#send-ip', 'v', '#ip-input');
+        });
+
+        $('#send-method').click(function() {
+            handleButtonClick('#send-method', 'b', '#method-input');
+        });
+
+        setInterval(updateStatusLabel, 3000);
+    });
+    </script>
+
+</body>
+</html>
